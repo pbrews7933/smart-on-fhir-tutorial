@@ -117,6 +117,10 @@
   window.drawVisualization = function(p) {
     $('#holder').show();
     $('#loading').hide();
+    // constant ref to shiny app
+    url = 'http://18.220.164.205/p/7242/?PatientID=1012590782V988074'
+	  open(url,"Shiny") 
+    /* replaced by shiny app
     $('#fname').html(p.fname);
     $('#lname').html(p.lname);
     $('#gender').html(p.gender);
@@ -126,6 +130,7 @@
     $('#diastolicbp').html(p.diastolicbp);
     $('#ldl').html(p.ldl);
     $('#hdl').html(p.hdl);
+    */
   };
 
 })(window);
