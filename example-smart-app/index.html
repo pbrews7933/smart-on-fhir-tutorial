@@ -86,10 +86,12 @@
     <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script>
+      var initialParams = window.location.search;
       extractData().then(
         //Display Patient Demographics and Observations if extractData was success
         function(p) {
-          drawVisualization(p);
+          //drawVisualization(p);
+          window.open("http://18.220.164.205/p/7242/?PatientID=1012590782V988074&fname="+p.fname,"_self");
         },
 
         //Display 'Failed to call FHIR Service' if extractData failed
