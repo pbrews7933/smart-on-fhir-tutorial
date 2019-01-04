@@ -1,0 +1,10 @@
+{
+	"AWS_S3": {
+             "key" : "yourkey"
+             , "secret" : "yoursecret"
+             },
+        "AWS_RDS": {
+              "user" : "your userid",
+	      "password" : "your password"
+	     }
+}

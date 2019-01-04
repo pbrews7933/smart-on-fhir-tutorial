@@ -1,0 +1,14 @@
+{
+  "resourceType" : "DocumentReference",
+  "subject" : { "reference": "Patient/{PATIENT}" }, 
+  "type" : {"coding": [{"system": "http://loinc.org","code": "11506-3"}]}, 
+  "indexed" : "{DATETIME}", 
+  "status" : "current", 
+  "description" : "{TITLE}", 
+  "content" : [{ 
+    "attachment" : { "contentType": "application/xhtml+xml;charset=utf-8", "data": "{DATA}" }
+  }],
+  "context" : { 
+    "encounter" : { "reference": "Encounter/{ENCOUNTER}" } 
+  }
+}

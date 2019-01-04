@@ -1,0 +1,32 @@
+{
+  "resourceType": "Media",
+  "id": "{ID}",
+  "text": {
+    "status": "generated"
+  },
+  "type": "photo",
+  "subtype": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/media-subtype",
+        "code": "diagram"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "{PATIENT}"
+  },
+  "operator": {
+    "reference": "{PRACTITIONER}"
+  },
+  "device": {
+    "display": "{DEVICETYPE}"
+  },
+  "frames": 1,
+  "content": {
+    "id": "a1",
+    "contentType": "image/png",
+    "data": "{GRAPHICIMAGE}",
+    "creation": "{DATETIME}"
+  }
+}
