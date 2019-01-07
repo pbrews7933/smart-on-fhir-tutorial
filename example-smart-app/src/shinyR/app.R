@@ -168,6 +168,7 @@ server <- function(input, output, session) {
                                htmlOutput(paste("GL", c, sep="")), 
                                htmlOutput(paste("JL", c, sep="")),
                                actionButton(paste("AB", c, sep=""), paste("Save ", c, " to EHR",sep="")),
+                               htmlOutput(paste("DR", c, sep="")),
                                value = paste("TS", c, sep="")))
             
           } else {   # No Action Button
@@ -475,8 +476,14 @@ observeEvent(input$ABOMRON_OMRON_HEARTVUE, {
   result <- httpPOST(paste(serverURL,
                            "/DocumentReference", 
                            sep=""), accessToken, paste("Data/BOM",qID,dateList[1],dateList[2],".json",sep=""))
-  disable("ABOMRON_OMRON_HEARTVUE")
-  print(result)
+  #print(result$status_code)
+  if(result$status_code == 201) {
+    disable("ABOMRON_OMRON_HEARTVUE")
+    output$DROMRON_OMRON_HEARTVUE <- renderUI("Saved")
+    delay(1000, output$DROMRON_OMRON_HEARTVUE <- renderUI(""))
+  } else {
+    print(result)
+  }
   })
 observeEvent(input$ABFITBIT_FITBIT_WATCH, {
 #  print('Thank you for clicking ABFITBIT_FITBIT_WATCH')
@@ -484,8 +491,13 @@ observeEvent(input$ABFITBIT_FITBIT_WATCH, {
   result <- httpPOST(paste(serverURL,
                            "/DocumentReference", 
                            sep=""), accessToken, paste("Data/BFB",qID,dateList[1],dateList[2],".json",sep=""))
-  disable("ABFITBIT_FITBIT_WATCH")
-  print(result)
+  if(result$status_code == 201) {
+    disable("ABFITBIT_FITBIT_WATCH")
+    output$DRFITBIT_FITBIT_WATCH <- renderUI("Saved")
+    delay(1000, output$DRFITBIT_FITBIT_WATCH <- renderUI(""))
+  } else {
+    print(result)
+  }
 })
 observeEvent(input$ABNOKIA_NOKIA_SCALE, {
  # print('Thank you for clicking ABNOKIA_NOKIA_SCALE')
@@ -493,8 +505,13 @@ observeEvent(input$ABNOKIA_NOKIA_SCALE, {
   result <- httpPOST(paste(serverURL,
                            "/DocumentReference", 
                            sep=""), accessToken, paste("Data/BNO",qID,dateList[1],dateList[2],".json",sep=""))
-  disable("ABNOKIA_NOKIA_SCALE")
-  print(result)
+  if(result$status_code == 201) {
+    disable("ABNOKIA_NOKIA_SCALE")
+    output$DRNOKIA_NOKIA_SCALE <- renderUI("Saved")
+    delay(1000, output$DRNOKIA_NOKIA_SCALE <- renderUI(""))
+  } else {
+    print(result)
+  }
 })
 }
 retrieveRow <- function(settings, Type, ID, sDate, eDate) {
@@ -626,8 +643,9 @@ formatInstant <- function(d,t,z) {
 }
 getDocumentReference <- function(url, patient, token) {
   httpDocumentReference <- httpGET(paste(url,
-                                   "/DocumentReference?patient="
+                                   "/DocumentReference/$docref?patient="
                                    , patient
+                                   , "&type=http://loinc.org|11506-3"
                                    , sep="")
                              , token)
   repeat  {
