@@ -6,7 +6,7 @@
 #
 #    http://shiny.rstudio.com/
 #
-
+# options(shiny.port = 4314)
 library(shiny)
 library(shinyjs)
 library(lubridate)
@@ -165,6 +165,7 @@ server <- function(input, output, session) {
           if(EHRConnect){
             appendTab(inputId = "TS",
                       tabPanel(title = row,  plotOutput(paste("TS", c, sep="")),
+                               textInput(paste("TI", c, sep=""), "Comments", "", width = "100%"),
                                htmlOutput(paste("GL", c, sep="")), 
                                htmlOutput(paste("JL", c, sep="")),
                                actionButton(paste("AB", c, sep=""), paste("Save ", c, " to EHR",sep="")),
@@ -187,7 +188,6 @@ server <- function(input, output, session) {
   }
 }
 # Show a plot of the device in question
-
 output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
   enable("ABOMRON_OMRON_HEARTVUE")
   filePrefix <- "OM"
@@ -222,8 +222,7 @@ output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
   P1 <- P1 + ggtitle(paste('Average Systolic/Diastolic Blood Pressure',sep = ""))
   P1 <- P1 + labs(y='mmHg')
   P1 <- P1 + theme(plot.title = element_text(size=20, face="bold"), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
-  
-  
+
   S <- subset(fetchedRows,fetchedRows$DeviceString == "OMRON:OMRON HEARTVUE" 
               & fetchedRows$MetricType == "Heart Rate" 
               & fetchedRows$db_date >= dateList[1] 
@@ -249,22 +248,17 @@ output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
   P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
   P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
   
-  fileNameUnique <- paste(filePrefix, qID, strftime(Sys.time(), "%Y%m%d%H%M%S"), sep="")
-  
+  fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
+ 
   ggarrange(P1, P2, nrow =2) %>%
     ggexport(filename = paste("Data/P",fileNameUnique, ".png", sep=""))
   
-  list[JSONLink, GraphicLink,graphicImage] <- writeGraphicFile (config$AWS_S3, fileNameUnique
+  list[JSONLink, GraphicLink] <- writeGraphicFile (config$AWS_S3, fileNameUnique
                     ,qID
                     ,"OMRON"
                     ,"OMRON HeartVue")
   output$JLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
   output$GLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
-  pBody <- writeDocumentReference(paste("Data/BOM",qID,dateList[1],dateList[2],".json",sep="")
-                                  ,patientID
-                                  ,paste("OMRON HEARTVUE Data for",idAndFullname, dateList[1], "to", dateList[2])
-                                  ,encounter
-                                  ,graphicImage)
   plot_grid(P1, P2, align = "v", nrow = 2, rel_heights = c(40, 20))
 }
 )
@@ -284,10 +278,10 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   S_F[["Bone Mass"]] = S_F[["Weight"]] * (S_F[["Bone Mass"]] / (S_F[["Bone Mass"]]+S_F[["Body Fat"]]+S_F[["Muscle Mass"]]))
   S_F[["Body Fat"]] = S_F[["Weight"]] * (S_F[["Body Fat"]] / (S_F[["Bone Mass"]]+S_F[["Body Fat"]]+S_F[["Muscle Mass"]]))
   S_F[["Muscle Mass"]] = S_F[["Weight"]] * (S_F[["Muscle Mass"]] / (S_F[["Bone Mass"]]+S_F[["Body Fat"]]+S_F[["Muscle Mass"]]))
-  S_F <- melt(S_F, S_F$db_date)
+  S_F <- melt(S_F, id=c("db_date"))
   S <- droplevels(subset(S_F,S_F$MetricType == "Bone Mass" | S_F$MetricType == "Muscle Mass" | S_F$MetricType == "Body Fat"))
   S_Water <- droplevels(subset(S_F,S_F$MetricType == "Body Water"))
-  
+
   L <- "lbs"
   if (input$MeasurementOptions == "2")  {
     S$value <- S$value * 0.45359237
@@ -307,7 +301,7 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   P1 <- P1 + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
   P1 <- P1 + ggtitle(paste('Average Weight per Day',sep = ""))
   P1 <- P1 + labs(y=L)
-  P1 <- P1 + scale_size_area(max_size = 6)
+  #P1 <- P1 + scale_size_area(max_size = 6)
   P1 <- P1 + theme(legend.position = "bottom")
   P1 <- P1 + theme(plot.title = element_text(size=20))
   P1 <- P1 + theme(legend.title = element_blank()) # Change size, color and face of legend title 
@@ -316,12 +310,12 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   P1 <- P1 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
   P1 <- P1 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
   #P <- P + geom_line(data=S_Water, aes(x=db_date, y=value))
-  
+
   S <- subset(fetchedRows,fetchedRows$DeviceString == "NOKIA:NOKIA SCALE" 
               & fetchedRows$MetricType == "Body Mass Index"
               & fetchedRows$db_date >= dateList[1] 
               & fetchedRows$db_date <= dateList[2])
-  
+   
   P2 <- ggplot(arrange(S, desc(MetricType)),
                aes(
                  x = db_date,
@@ -337,15 +331,15 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   P2 <- P2 + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
   P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
   P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
-  
+
   S <- subset(fetchedRows,fetchedRows$DeviceString == "NOKIA:NOKIA SCALE" 
               & fetchedRows$db_date >= dateList[1] 
               & fetchedRows$db_date <= dateList[2])  
+
   S_F <- cast(S, db_date ~ MetricType, value="AvgValue")
   S_F[["Body Water"]] <- S_F[["Body Water"]] / S_F[["Weight"]] * 100
-  S_F <- melt(S_F, S_F$db_date)
+  S_F <- melt(S_F, id=c("db_date"))  # problem child
   S <- droplevels(subset(S_F,S_F$MetricType == "Body Water"))
-  
   P3 <- ggplot(arrange(S, desc(MetricType)),
                aes(
                  x = db_date,
@@ -362,21 +356,16 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   P3 <- P3 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
   P3 <- P3 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
   
-  fileNameUnique <- paste(filePrefix, qID,strftime(Sys.time(), "%Y%m%d%H%M%S"), sep="")
+  fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
   
   ggarrange(P1, P3, P2, nrow =3) %>%
     ggexport(filename = paste("Data/P", fileNameUnique, ".png", sep=""))
-  list[JSONLink, GraphicLink,graphicImage] <- writeGraphicFile (config$AWS_S3, fileNameUnique
+  list[JSONLink, GraphicLink] <- writeGraphicFile (config$AWS_S3, fileNameUnique
                                                                 ,qID
                                                                 ,"NOKIA"
                                                                 ,"NOKIA Scale")
   output$JLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
   output$GLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
-  pBody <- writeDocumentReference(paste("Data/BNO",qID,dateList[1],dateList[2],".json",sep="")
-                                   ,patientID
-                                   ,paste("NOKIA SCALE Data for",idAndFullname, dateList[1], "to", dateList[2])
-                                   ,encounter
-                                   , graphicImage)  
   plot_grid(P1, P3, P2, align = "v", nrow = 3, rel_heights = c(40, 20, 20))
 }
 )
@@ -399,7 +388,8 @@ output$TSFITBIT_FITBIT_WATCH <- renderPlot({
   S_Flattened[["Calories Level 2"]] <- S_Flattened[["Calories Level 2"]] / S_Flattened[["Minutes Level 2"]]
   S_Flattened[["Calories Level 3"]] <- S_Flattened[["Calories Level 3"]] / S_Flattened[["Minutes Level 3"]]
   S_Flattened[["Calories Level 4"]] <- S_Flattened[["Calories Level 4"]] / S_Flattened[["Minutes Level 4"]]
-  S_Melted <- melt(S_Flattened, S_Flattened$db_date)
+  
+  S_Melted <- melt(S_Flattened, id=c("db_date"))
   S_MeltedSubset <- subset(S_Melted,substr(S_Melted$MetricType, 1,3) == "Min")
   
   S_MeltedSubset$MetricType <- factor(S_MeltedSubset$MetricType, labels = c("Low", "Fat Burn", "Cardio", "Peak"))
@@ -416,7 +406,7 @@ output$TSFITBIT_FITBIT_WATCH <- renderPlot({
   P1 <- P1 + scale_fill_brewer( palette = "Reds") 
   P1 <- P1 + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
   P1 <- P1 + labs(title=paste('Minutes per Heart Rate Level per Day',sep = ""), subtitle=paste("Low(30-80)", "Fat Burn(80-112)", "Cardio(112-136)", "Peak(136-220)",sep=","), y='Min')
-  P1 <- P1 + scale_size_area(max_size = 6)
+  #P1 <- P1 + scale_size_area(max_size = 6)
   P1 <- P1 + theme(legend.position = "bottom")
   P1 <- P1 + theme(plot.title = element_text(size=20, hjust=0.5), plot.subtitle=element_text(size=14, hjust=0.5))
   P1 <- P1 + theme(legend.title = element_blank()) # Change size, color and face of legend title 
@@ -452,29 +442,31 @@ output$TSFITBIT_FITBIT_WATCH <- renderPlot({
   P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
   P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
   
-  fileNameUnique <- paste(filePrefix, qID,strftime(Sys.time(), "%Y%m%d%H%M%S"), sep="")
+  fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
   
   ggarrange(P1, P2, nrow =2) %>%
     ggexport(filename=paste("Data/P", fileNameUnique, ".png", sep="")) 
-  list[JSONLink, GraphicLink,graphicImage] <- writeGraphicFile (config$AWS_S3, fileNameUnique
+  list[JSONLink, GraphicLink] <- writeGraphicFile (config$AWS_S3, fileNameUnique
                                                                 ,qID
                                                                 ,"FITBIT"
                                                                 ,"FITBIT Watch")
   output$JLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
   output$GLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
-  pBody <- writeDocumentReference(paste("Data/BFB",qID,dateList[1],dateList[2],".json",sep="")
-                                ,patientID
-                                ,paste("FITBIT WATCH Data for",idAndFullname, dateList[1], "to", dateList[2])
-                                ,encounter
-                                ,graphicImage)
   plot_grid(P1, P2, align = "v", nrow = 2, rel_heights = c(40, 20))
 }
 )
 observeEvent(input$ABOMRON_OMRON_HEARTVUE, {
   dateList <- dateRanges(input$DateRangeOptions, input$Dates[1], input$Dates[2])
 #  print(paste("Thank you for clicking ABOMRON_OMRON_HEARTVUE",dateList[1],dateList[2]," P",qID,dateList[1],dateList[2],".json",sep=""))
+  pBody <- writeDocumentReference("OM"
+                                  ,qID
+                                  ,"OMRON HeatyVue Data for"
+                                  ,encounter
+                                  ,dateList[1]
+                                  ,dateList[2]
+                                  ,isolate(input$TIOMRON_OMRON_HEARTVUE))
   result <- httpPOST(paste(serverURL,
-                           "/DocumentReference", 
+                           "/DocumentReference",
                            sep=""), accessToken, paste("Data/BOM",qID,dateList[1],dateList[2],".json",sep=""))
   #print(result$status_code)
   if(result$status_code == 201) {
@@ -488,9 +480,16 @@ observeEvent(input$ABOMRON_OMRON_HEARTVUE, {
 observeEvent(input$ABFITBIT_FITBIT_WATCH, {
 #  print('Thank you for clicking ABFITBIT_FITBIT_WATCH')
   dateList <- dateRanges(input$DateRangeOptions, input$Dates[1], input$Dates[2])
+  pBody <- writeDocumentReference("FB"
+                                  ,qID
+                                  ,"FITBIT Watch Data for"
+                                  ,encounter
+                                  ,dateList[1]
+                                  ,dateList[2]
+                                  ,isolate(input$TIFITBIT_FITBIT_WATCH))
   result <- httpPOST(paste(serverURL,
-                           "/DocumentReference", 
-                           sep=""), accessToken, paste("Data/BFB",qID,dateList[1],dateList[2],".json",sep=""))
+                          "/DocumentReference",
+                          sep=""), accessToken, paste("Data/BFB",qID,dateList[1],dateList[2],".json",sep=""))
   if(result$status_code == 201) {
     disable("ABFITBIT_FITBIT_WATCH")
     output$DRFITBIT_FITBIT_WATCH <- renderUI("Saved")
@@ -502,8 +501,15 @@ observeEvent(input$ABFITBIT_FITBIT_WATCH, {
 observeEvent(input$ABNOKIA_NOKIA_SCALE, {
  # print('Thank you for clicking ABNOKIA_NOKIA_SCALE')
   dateList <- dateRanges(input$DateRangeOptions, input$Dates[1], input$Dates[2])
+  pBody <- writeDocumentReference("NO"
+                                  ,qID
+                                  ,"Nokia Scale Data for"
+                                  ,encounter
+                                  ,dateList[1]
+                                  ,dateList[2]
+                                  ,isolate(input$TINOKIA_NOKIA_SCALE))
   result <- httpPOST(paste(serverURL,
-                           "/DocumentReference", 
+                           "/DocumentReference",
                            sep=""), accessToken, paste("Data/BNO",qID,dateList[1],dateList[2],".json",sep=""))
   if(result$status_code == 201) {
     disable("ABNOKIA_NOKIA_SCALE")
@@ -618,23 +624,31 @@ httpPOST <- function(url, token, pbody) {
            # , verbose(TRUE)
             )
 }
-writeDocumentReference <- function(fileName, p, t, e, d) {
-  print(fileName)
+writeDocumentReference <- function(fileType, patientId, titlePrefix, encounter, sdate, edate, comments) {
+  fileName <- paste(fileType, patientId, sdate,edate, sep="")
+  #print(fileName)
+  header = paste(titlePrefix," Patient: ", patientId, "<br />", "From ", sdate, " to ", edate,sep="")
+  title = paste(titlePrefix," Patient: ", patientId, " from ", sdate, " to ", edate,sep="")
+  fileNamePNG <- paste("Data/P", fileName, ".png", sep="")
+  # print(fileNamePNG)
+  graphicImage <- base64Encode(readBin(fileNamePNG, "raw", file.info(fileNamePNG)[1, "size"]))
   outer <- read_file("_templateEmbeddedDocumentReference.txt")
-  outer <- sub("\\{PATIENT\\}", p, outer) 
+  outer <- sub("\\{PATIENT\\}", patientId, outer) 
   outer <- sub("\\{DATETIME\\}", formatInstant(Sys.Date(), Sys.time(), Sys.timezone()),  outer) 
-  outer <- sub("\\{ENCOUNTER\\}", e,  outer) 
-  outer <- sub("\\{TITLE\\}", t,  outer)
+  outer <- sub("\\{ENCOUNTER\\}", encounter,  outer) 
+  outer <- sub("\\{TITLE\\}", title,  outer)
   inner <- read_file("_templateDocumentReferenceXHMTL.txt")
-  inner <- sub("\\{TITLE\\}", t,  inner)
-  inner <- sub("\\{HEADER\\}", t,  inner)
-  inner <- sub("\\{DATA\\}", d,  inner)
-  #write_file(inner, "log_file_inner.txt")
+  inner <- sub("\\{TITLE\\}", title,  inner)
+  inner <- sub("\\{HEADER\\}", header,  inner)
+  inner <- sub("\\{COMMENTS\\}", comments, inner)
+  inner <- sub("\\{DATA\\}", graphicImage,  inner)
+  write_file(inner, "log_file_inner.txt")
   inner <- base64Encode(inner)
   outer <- sub("\\{DATA\\}", inner,  outer)
   #write_file(outer, "log_file_outer.txt")
-  write_file( outer, fileName)
-  return(fileName)
+  fileNameBody <- paste("Data/B", fileName, ".json", sep="")
+  write_file( outer, fileNameBody)
+  return(fileNameBody)
 }
 formatInstant <- function(d,t,z) {
   D <- strftime(d, "%Y-%m-%d")
@@ -718,6 +732,6 @@ writeGraphicFile <- function(settings, fileName, patient,partnerid,devicetype){
   graphicLink <- paste('https://s3.us-east-2.amazonaws.com/ellumenwearablesconnectdata/',
                        fileNamePNG,
                        sep="")
-  return(list(jsonLink, graphicLink, gI))  
+  return(list(jsonLink, graphicLink, f))  
 }
 shinyApp(ui = ui, server = server)
