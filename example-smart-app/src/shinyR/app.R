@@ -54,7 +54,7 @@ ui <- fluidPage(
         ),
         selected = 3
       ),
-      dateRangeInput("dates", start = strftime(Sys.Date(), "%Y-%m-%d"), end= strftime(Sys.Date(), "%Y-%m-%d"), label = h3(""), max = strftime(Sys.Date(), "%Y-%m-%d")),
+      dateRangeInput("Dates", start = strftime(Sys.Date(), "%Y-%m-%d"), end= strftime(Sys.Date(), "%Y-%m-%d"), label = h3(""), max = strftime(Sys.Date(), "%Y-%m-%d")),
       radioButtons(
         "MeasurementOptions",
         label = h3("Settings"),
@@ -92,6 +92,7 @@ server <- function(input, output, session) {
     }
     config <- fromJSON("config/settings.json")
     EHRConnect <- FALSE
+    if (!grepl("^[a-zA-Z0-9_]*$", qID)) {qID <- ""}
     if (qID != ""){
       if (checkURLString(URLString,'access_token') != "" && checkURLString(URLString,'srvrURL') != "" ) {
         EHRConnect <- TRUE
@@ -560,15 +561,21 @@ retrieveRow <- function(settings, Type, ID, sDate, eDate) {
 }
 dateRanges <- function(Opt,SDate, EDate) {
   if (Opt == "8") {
-    if (SDate > EDate) { 
-      TDate <- SDate
-      SDate <- EDate
-      EDate <- TDate
+    sDate <- checkDate(SDate)
+    eDate <- checkDate(EDate)
+    if (sDate > eDate) { 
+      tDate <- sDate
+      sDate <- eDate
+      rDate <- tDate
+    } else if(sDate == eDate) {
+      sDate <- sDate - 1
     }
+    SDate <- strftime(sDate, "%Y-%m-%d")
+    EDate <- strftime(eDate, "%Y-%m-%d")
   } else {
     EDate <- strftime(Sys.Date(), "%Y-%m-%d")
     if (Opt == "1") {
-      SDate <- strftime(Sys.Date(), "%Y-%m-%d")
+      SDate <- strftime(Sys.Date() - 1, "%Y-%m-%d")
     }
     else if (Opt == "2") {
       SDate <- strftime(Sys.Date() - 7, "%Y-%m-%d")
@@ -640,7 +647,7 @@ writeDocumentReference <- function(fileType, patientId, titlePrefix, encounter, 
   inner <- read_file("_templateDocumentReferenceXHMTL.txt")
   inner <- sub("\\{TITLE\\}", title,  inner)
   inner <- sub("\\{HEADER\\}", header,  inner)
-  inner <- sub("\\{COMMENTS\\}", comments, inner)
+  inner <- sub("\\{COMMENTS\\}", cleanFun(comments), inner)
   inner <- sub("\\{DATA\\}", graphicImage,  inner)
   write_file(inner, "log_file_inner.txt")
   inner <- base64Encode(inner)
@@ -733,5 +740,15 @@ writeGraphicFile <- function(settings, fileName, patient,partnerid,devicetype){
                        fileNamePNG,
                        sep="")
   return(list(jsonLink, graphicLink, f))  
+}
+cleanFun <- function(htmlString) {
+  return(gsub("<.*?>", "", htmlString))
+}
+checkDate <- function(text){
+  d <- try( as.Date( text, format= "%Y-%m-%d" ) )
+  if( class( d ) == "try-error" || is.na( d ) ) { 
+    d <- Sys.Date()
+  }
+  return (d)
 }
 shinyApp(ui = ui, server = server)
