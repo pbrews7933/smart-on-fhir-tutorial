@@ -143,7 +143,7 @@ server <- function(input, output, session) {
           if (nextURL == "") break
           httpObservation <- httpGET(nextURL, accessToken)
         }
-       # getDocumentReference(serverURL, patientID, accessToken)
+        documentReferences = getDocumentReference(serverURL, patientID, accessToken)
         idAndFullname <- paste(checkJsonString(jsonPatient$id)
           ,prefixText(" ",checkJsonString(jsonPatient$name[[1]]$family[[1]]))
           ,prefixText(", ",checkJsonString(jsonPatient$name[[1]]$given[[1]])),sep="")
@@ -200,10 +200,6 @@ output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
     fetchedRows<-retrieveRow(config$AWS_RDS,qType, qID,defaultSDate, defaultEDate)
     ds <- unique(fetchedRows$DeviceString)      
   }
-  plotTitle <- paste('Average Systolic/Diastolic ',
-                     sep = ""
-  )
-  
   S <- subset(fetchedRows,fetchedRows$DeviceString == "OMRON:OMRON HEARTVUE" 
               & (fetchedRows$MetricType == "Diastolic" | fetchedRows$MetricType == "Systolic" )
               & fetchedRows$db_date >= dateList[1] 
@@ -217,37 +213,14 @@ output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
   S_F_Avg$MidPoint <- (S_F_Avg$Systolic + S_F_Avg$Diastolic) / 2
   
   S_F <- merge(merge(S_F_Avg, S_F_Min), S_F_Max)
-  P1 <- ggplot(S_F, aes(db_date))
-  P1 <- P1 + geom_boxplot(aes(ymin = S_F$MinDiastolic, lower = S_F$Diastolic, middle = S_F_Avg$MidPoint, upper = S_F$Systolic, ymax = S_F$MaxSystolic),
-                          stat = "identity")
-  P1 <- P1 + ggtitle(paste('Average Systolic/Diastolic Blood Pressure',sep = ""))
-  P1 <- P1 + labs(y='mmHg')
-  P1 <- P1 + theme(plot.title = element_text(size=20, face="bold"), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  P1 <- plotBP(S_F, S_F_Avg)
 
   S <- subset(fetchedRows,fetchedRows$DeviceString == "OMRON:OMRON HEARTVUE" 
               & fetchedRows$MetricType == "Heart Rate" 
               & fetchedRows$db_date >= dateList[1] 
               & fetchedRows$db_date <= dateList[2])  
   
-  P2 <- ggplot(S,
-               aes(
-                 x = db_date,
-                 y = AvgValue,
-                 group = MetricType,
-                 colour = MetricType
-               ))
-  P2 <- P2 + geom_point(size=3)
-  P2 <- P2 + geom_smooth(method = "lm", se=FALSE, color="black", size = 1, aes(group=MetricType, color=MetricType))
-  P2 <- P2 + ggtitle(paste('Average Heart Rate',sep = ""))
-  P2 <- P2 + labs(y='BPM')
-  P2 <- P2 + scale_size_area(max_size = 6)
-  P2 <- P2 + theme(legend.position = "none")
-  P2 <- P2 + theme(axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
-  P2 <- P2 + theme(legend.title = element_blank())
-  P2 <- P2 + theme(plot.title = element_text(size=20, face="bold")) # Change size, color and face of plot title 
-  P2 <- P2 + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  P2 <- plotBPM(S)
   
   fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
  
@@ -289,49 +262,13 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
     S_Water$value <- S_Water$value * 0.45359237
     L <- "Kg"
   }
-  P1 <- ggplot(S,
-               aes(
-                 x = db_date,
-                 y = value,
-                 group = MetricType,
-                 colour = MetricType,
-                 fill = MetricType
-               ))
-  P1 <- P1 + scale_size_area(max_size = 6)
-  P1 <- P1 + scale_fill_brewer( palette = "Reds") 
-  P1 <- P1 + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
-  P1 <- P1 + ggtitle(paste('Average Weight per Day',sep = ""))
-  P1 <- P1 + labs(y=L)
-  #P1 <- P1 + scale_size_area(max_size = 6)
-  P1 <- P1 + theme(legend.position = "bottom")
-  P1 <- P1 + theme(plot.title = element_text(size=20))
-  P1 <- P1 + theme(legend.title = element_blank()) # Change size, color and face of legend title 
-  P1 <- P1 + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
-  P1 <- P1 + theme(axis.title.x = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P1 <- P1 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P1 <- P1 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
-  #P <- P + geom_line(data=S_Water, aes(x=db_date, y=value))
+  P1 <- plotAverageWeight(S, L)
 
   S <- subset(fetchedRows,fetchedRows$DeviceString == "NOKIA:NOKIA SCALE" 
               & fetchedRows$MetricType == "Body Mass Index"
               & fetchedRows$db_date >= dateList[1] 
               & fetchedRows$db_date <= dateList[2])
-   
-  P2 <- ggplot(arrange(S, desc(MetricType)),
-               aes(
-                 x = db_date,
-                 y = AvgValue
-               ))
-  P2 <- P2 + geom_point(size=3)
-  P2 <- P2 + ggtitle(paste('BMI',sep = ""))
-  P2 <- P2 + labs(y='BMI')
-  P2 <- P2 + scale_size_area(max_size = 6)
-  P2 <- P2 + theme(legend.position = "none")
-  P2 <- P2 + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
-  P2 <- P2 + theme(legend.title = element_blank())
-  P2 <- P2 + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  P2 <- plotBMI(S)
 
   S <- subset(fetchedRows,fetchedRows$DeviceString == "NOKIA:NOKIA SCALE" 
               & fetchedRows$db_date >= dateList[1] 
@@ -341,22 +278,8 @@ output$TSNOKIA_NOKIA_SCALE <- renderPlot({
   S_F[["Body Water"]] <- S_F[["Body Water"]] / S_F[["Weight"]] * 100
   S_F <- melt(S_F, id=c("db_date"))  # problem child
   S <- droplevels(subset(S_F,S_F$MetricType == "Body Water"))
-  P3 <- ggplot(arrange(S, desc(MetricType)),
-               aes(
-                 x = db_date,
-                 y = value
-               ))
-  P3 <- P3 + geom_line(size=1)
-  P3 <- P3 + ggtitle(paste('Body Water',sep = ""))
-  P3 <- P3 + labs(y='Percent')
-  P3 <- P3 + scale_size_area(max_size = 6)
-  P3 <- P3 + theme(legend.position = "none")
-  P3 <- P3 + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
-  P3 <- P3 + theme(legend.title = element_blank())
-  P3 <- P3 + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P3 <- P3 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P3 <- P3 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
-  
+  P3 <- plotBodyWater(S)
+
   fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
   
   ggarrange(P1, P3, P2, nrow =3) %>%
@@ -395,53 +318,14 @@ output$TSFITBIT_FITBIT_WATCH <- renderPlot({
   
   S_MeltedSubset$MetricType <- factor(S_MeltedSubset$MetricType, labels = c("Low", "Fat Burn", "Cardio", "Peak"))
   
-  P1 <- ggplot(arrange(S_MeltedSubset, desc(MetricType)),
-               aes(
-                 x = db_date,
-                 y = value,
-                 group = MetricType,
-                 colour = MetricType,
-                 fill = MetricType
-               )) 
-  P1 <- P1 + scale_size_area(max_size = 6)
-  P1 <- P1 + scale_fill_brewer( palette = "Reds") 
-  P1 <- P1 + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
-  P1 <- P1 + labs(title=paste('Minutes per Heart Rate Level per Day',sep = ""), subtitle=paste("Low(30-80)", "Fat Burn(80-112)", "Cardio(112-136)", "Peak(136-220)",sep=","), y='Min')
-  #P1 <- P1 + scale_size_area(max_size = 6)
-  P1 <- P1 + theme(legend.position = "bottom")
-  P1 <- P1 + theme(plot.title = element_text(size=20, hjust=0.5), plot.subtitle=element_text(size=14, hjust=0.5))
-  P1 <- P1 + theme(legend.title = element_blank()) # Change size, color and face of legend title 
-  P1 <- P1 + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
-  P1 <- P1 + theme(axis.title.x = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P1 <- P1 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P1 <- P1 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
-  
+  P1 <- plotHeartRate(S_MeltedSubset)
+
   S <- subset(fetchedRows,fetchedRows$DeviceString == "FITBIT:FITBIT WATCH" 
               & fetchedRows$MetricType == "Heart Rate"
               & fetchedRows$db_date >= dateList[1] 
               & fetchedRows$db_date <= dateList[2])
   
-  P2 <- ggplot(arrange(S, desc(MetricType)),
-               aes(
-                 x = db_date,
-                 y = AvgValue,
-                 group = MetricType,
-                 colour = MetricType,
-                 fill = MetricType
-               ))
-  P2 <- P2 + geom_point(size=3)
-  P2 <- P2 + scale_colour_discrete(name  = "Heart Rate") # Change legend title 
-  P2 <- P2 + geom_smooth(method = "lm", se=FALSE, color="black", size = 1, aes(group=MetricType, color=MetricType, fill=MetricType))
-  P2 <- P2 + ggtitle(paste('Average Resting Heart per Day',sep = ""))
-  P2 <- P2 + labs(x='Date', y='BPM')
-  P2 <- P2 + scale_size_area(max_size = 6)
-  P2 <- P2 + theme(legend.position = "none")
-  P2 <- P2 + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
-  P2 <- P2 + theme(legend.title = element_blank())
-  P2 <- P2 + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
-  P2 <- P2 + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
-  P2 <- P2 + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
-  P2 <- P2 + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  P2 <- plotAvgRestingBPM(S)
   
   fileNameUnique <- paste(filePrefix, qID, dateList[1], dateList[2], sep="")
   
@@ -666,31 +550,41 @@ getDocumentReference <- function(url, patient, token) {
   httpDocumentReference <- httpGET(paste(url,
                                    "/DocumentReference/$docref?patient="
                                    , patient
-                                   , "&type=http://loinc.org|11506-3"
+                                   #, "1316035&type=http%3A%2F%2Floinc.org%7C34133-9"
+                                   , "&type="
+                                   , "http%3A%2F%2Floinc.org%7C11506-3"
                                    , sep="")
                              , token)
-  repeat  {
-    nextURL <- ""
+  jsonDocumentReferences <- NULL
+  if (httpDocumentReference$status_code == 200) {
     jsonDocumentReference <- content(httpDocumentReference, as="parsed", type="application/json")
-    if (jsonDocumentReference$resourceType !="Bundle") {
-      jsonDocumentReferences <- jsonDocumentReference
-    } else {     
-      jsonDocumentReferences <-  jsonDocumentReference$entry
-      for (i in 1:length( jsonDocumentReference$link)) {
-        if ( jsonDocumentReference$link[[i]]$relation == "next"){
-          nextURL <-  jsonDocumentReference$link[[i]]$url
+    if (jsonDocumentReference$total > 0) {
+      repeat  {
+        nextURL <- ""
+        if (jsonDocumentReference$resourceType !="Bundle") {
+          jsonDocumentReferences <- jsonDocumentReference
+        } else {     
+          jsonDocumentReferences <-  jsonDocumentReference$entry
+          for (i in 1:length( jsonDocumentReference$link)) {
+            if ( jsonDocumentReference$link[[i]]$relation == "next"){
+              nextURL <-  jsonDocumentReference$link[[i]]$url
+            }
+          }
         }
+        for (i in 1:length( jsonDocumentReferences)) {
+          if (!is.null(jsonDocumentReferences[[i]]$resource$content$attachment[[1]]$data)) {
+            fileNameHTML <- paste("Data/DR", patient,jsonDocumentReferences[[i]]$resource$indexed,".html",sep="")
+            write_file(jsonDocumentReferences[[i]]$resource$content$attachment[[1]]$data, fileNameHTML, append=TRUE )
+          }
+        }
+        if (nextURL == "") break
+        httpDocumentReference <- httpGET(nextURL, token)
+        if (httpDocumentReference$status_code != 200) break
+        jsonDocumentReference <- content(httpDocumentReference, as="parsed", type="application/json")
       }
     }
-    for (i in 1:length( jsonDocumentReferences)) {
-      if (!is.null(jsonDocumentReferences[[i]]$resource$content$attachment[[1]]$data)) {
-        fileNameHTML <- paste(patient,strftime(Sys.time(), "%Y%m%d%H%M%S"),".html",sep="")
-        write_file(jsonDocumentReferences[[i]]$resource$content$attachment[[1]]$data, fileNameHTML, append=TRUE )
-      }
-    }
-    if (nextURL == "") break
-    httpDocumentReference <- httpGET(nextURL, token)
   }
+  return(jsonDocumentReferences)
 }
 writeGraphicFile <- function(settings, fileName, patient,partnerid,devicetype){
   fileNamePNG <- paste("P", fileName, ".png", sep="")
@@ -750,5 +644,144 @@ checkDate <- function(text){
     d <- Sys.Date()
   }
   return (d)
+}
+plotBodyWater <- function (S) {
+  P <- ggplot(arrange(S, desc(MetricType)),
+               aes(
+                 x = db_date,
+                 y = value
+               ))
+  P <- P + geom_line(size=1)
+  P <- P + ggtitle(paste('Body Water',sep = ""))
+  P <- P + labs(y='Percent')
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "none")
+  P <- P + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  P <- P + theme(legend.title = element_blank())
+  P <- P + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  return(P)
+}
+plotBMI <- function(S) {
+  P <- ggplot(arrange(S, desc(MetricType)),
+               aes(
+                 x = db_date,
+                 y = AvgValue
+               ))
+  P <- P + geom_point(size=3)
+  P <- P + ggtitle(paste('BMI',sep = ""))
+  P <- P + labs(y='BMI')
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "none")
+  P <- P + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  P <- P + theme(legend.title = element_blank())
+  P <- P + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  return(P)
+}
+plotAverageWeight <- function(S, L) {
+  P <- ggplot(S,
+               aes(
+                 x = db_date,
+                 y = value,
+                 group = MetricType,
+                 colour = MetricType,
+                 fill = MetricType
+               ))
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + scale_fill_brewer( palette = "Reds") 
+  P <- P + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
+  P <- P + ggtitle(paste('Average Weight per Day',sep = ""))
+  P <- P + labs(y=L)
+  #P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "bottom")
+  P <- P + theme(plot.title = element_text(size=20))
+  P <- P + theme(legend.title = element_blank()) # Change size, color and face of legend title 
+  P <- P + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
+  P <- P + theme(axis.title.x = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  #P <- P + geom_line(data=S_Water, aes(x=db_date, y=value))
+  return(P)
+}
+plotBPM <- function (S) {
+  P <- ggplot(S,
+               aes(
+                 x = db_date,
+                 y = AvgValue,
+                 group = MetricType,
+                 colour = MetricType
+               ))
+  P <- P + geom_point(size=3)
+  P <- P + geom_smooth(method = "lm", se=FALSE, color="black", size = 1, aes(group=MetricType, color=MetricType))
+  P <- P + ggtitle(paste('Average Heart Rate',sep = ""))
+  P <- P + labs(y='BPM')
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "none")
+  P <- P + theme(axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  P <- P + theme(legend.title = element_blank())
+  P <- P + theme(plot.title = element_text(size=20, face="bold")) # Change size, color and face of plot title 
+  P <- P + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  return (P)
+}
+plotBP<- function (S, S_Avg){
+  P <- ggplot(S, aes(db_date))
+  P <- P + geom_boxplot(aes(ymin = S$MinDiastolic, lower = S$Diastolic, middle = S_Avg$MidPoint, upper = S$Systolic, ymax = S$MaxSystolic),
+                        stat = "identity")
+  P <- P + ggtitle(paste('Average Systolic/Diastolic Blood Pressure',sep = ""))
+  P <- P + labs(y='mmHg')
+  P <- P + theme(plot.title = element_text(size=20, face="bold"), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  return(P)
+}
+plotHeartRate<-function(S) {
+  P <- ggplot(arrange(S, desc(MetricType)),
+               aes(
+                 x = db_date,
+                 y = value,
+                 group = MetricType,
+                 colour = MetricType,
+                 fill = MetricType
+               )) 
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + scale_fill_brewer( palette = "Reds") 
+  P <- P + geom_bar(position = position_stack(reverse = TRUE), stat = "identity")
+  P <- P + labs(title=paste('Minutes per Heart Rate Level per Day',sep = ""), subtitle=paste("Low(30-80)", "Fat Burn(80-112)", "Cardio(112-136)", "Peak(136-220)",sep=","), y='Min')
+  #P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "bottom")
+  P <- P + theme(plot.title = element_text(size=20, hjust=0.5), plot.subtitle=element_text(size=14, hjust=0.5))
+  P <- P + theme(legend.title = element_blank()) # Change size, color and face of legend title 
+  P <- P + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
+  P <- P + theme(axis.title.x = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  return(P)
+}
+plotAvgRestingBPM <- function(S){
+  P <- ggplot(arrange(S, desc(MetricType)),
+               aes(
+                 x = db_date,
+                 y = AvgValue,
+                 group = MetricType,
+                 colour = MetricType,
+                 fill = MetricType
+               ))
+  P <- P + geom_point(size=3)
+  P <- P + scale_colour_discrete(name  = "Heart Rate") # Change legend title 
+  P <- P + geom_smooth(method = "lm", se=FALSE, color="black", size = 1, aes(group=MetricType, color=MetricType, fill=MetricType))
+  P <- P + ggtitle(paste('Average Resting Heart per Day',sep = ""))
+  P <- P + labs(x='Date', y='BPM')
+  P <- P + scale_size_area(max_size = 6)
+  P <- P + theme(legend.position = "none")
+  P <- P + theme(plot.title = element_text(size=20), axis.title.x = element_blank(), axis.title.y = element_text(face="bold", size=20))
+  P <- P + theme(legend.title = element_blank())
+  P <- P + theme(title = element_text(size=16, face="bold")) # Change size, color and face of plot title 
+  P <- P + theme(axis.text = element_text(size = 12), axis.title = element_text(size = rel(1.0))) # Change size of the text in the axis-labels and axis title 
+  P <- P + theme(legend.key.size =  unit(0.5, "in")) # Change key size in the legend 
+  P <- P + theme(legend.text = element_text(size=12)) # Change the size labels in the legend 
+  return(P)
 }
 shinyApp(ui = ui, server = server)
