@@ -99,7 +99,32 @@
 	}
 	return(x + y);
 	};
-      extractData().then(
+	/**
+ 	* Calculate a 32 bit FNV-1a hash
+ 	* Found here: https://gist.github.com/vaiorabbit/5657561
+ 	* Ref.: http://isthe.com/chongo/tech/comp/fnv/
+ 	*
+ 	* @param {string} str the input value
+ 	* @param {boolean} [asString=false] set to true to return the hash value as 
+ 	*     8-digit hex string instead of an integer
+ 	* @param {integer} [seed] optionally pass the hash of the previous chunk
+ 	* @returns {integer | string}
+ 	*/
+	var hashFnv32a = function (str, asString, seed) {
+    	/*jshint bitwise:false */
+    	var i, l, hval = (seed === undefined) ? 0x811c9dc5 : seed;
+
+	for (i = 0, l = str.length; i < l; i++) {
+        	hval ^= str.charCodeAt(i);
+        	hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
+    	}
+    	if( asString ){
+        	// Convert to 8 digit hex string
+        	return ("0000000" + (hval >>> 0).toString(16)).substr(-8);
+    	}
+    	return hval >>> 0;
+	};      
+	extractData().then(
         //Display Patient Demographics and Observations if extractData was success
         function(p) {
 		for (var i = 0; i < sessionStorage.length; i++){
@@ -109,16 +134,18 @@
 				var ss  = JSON.parse(sessionStorage.getItem(sessionStorage.key(i)));
 			}
 		}
-		var patient = "";
-		patient = patient + prefixText("patient=", encodeURIComponent(tr.patient));
-		patient = patient + prefixText("&encounter=", encodeURIComponent(tr.encounter));
-		patient = patient + prefixText("&need_patient_banner=", encodeURIComponent(tr.need_patient_banner));
-		var server = "&srvrURL="+encodeURIComponent(ss.server);
-		var access_token = "&access_token="+encodeURIComponent(tr.access_token);
+		var v = "";
+		v = prefixText("patient=", encodeURIComponent(tr.patient))
+			+ prefixText("&encounter=", encodeURIComponent(tr.encounter))
+			+ prefixText("&need_patient_banner=", encodeURIComponent(tr.need_patient_banner))
+			+ "&srvrURL="+encodeURIComponent(ss.server)
+			+ "&access_token="+encodeURIComponent(tr.access_token);
+		v = v + "&hash=" + hashFnv32a(tr.patient+tr.encounter+tr.access_token, true);
 //		drawVisualization(p);
 //		$('#ss0').html(tr.access_token);
 //		$('#tokenResponse').html(patient);
-		window.open("http://18.220.164.205/p/4314/?"+patient+server+access_token,"_self");
+		
+		window.open("http://18.220.164.205/p/4314/?"+v,"_self");
         },
 
         //Display 'Failed to call FHIR Service' if extractData failed
