@@ -80,6 +80,7 @@ ui <- fluidPage(
       ),
       verbatimTextOutput('v1'), 
       verbatimTextOutput('v2')
+    )
   , column(8,
 #    Tabset Panel wit,h graphs specific to the device in use
 #    mainPanel(htmlOutput("Main"),
