@@ -53,38 +53,43 @@ ui <- fluidPage(
 #    fluidRow(
     , column(2,
 #    sidebarPanel(
-      radioButtons(
-        "DateRangeOptions",
-        label = h3("Date Range"),
-        choices = list(
-          "Today" = 1,
-          "One Week" = 2,
-          "One Month" = 3,
-          "Two Months" = 4,
-          "Six Months" = 5,
-          "One Year" = 6,
-          "Two Years" = 7,
-          "Custom Date Range" = 8
+      hidden(
+        radioButtons(
+          "DateRangeOptions",
+          label = h3("Date Range"),
+          choices = list(
+            "Today" = 1,
+            "One Week" = 2,
+            "One Month" = 3,
+            "Two Months" = 4,
+            "Six Months" = 5,
+            "One Year" = 6,
+            "Two Years" = 7,
+            "Custom Date Range" = 8
+          ),
+          selected = 3
+      )
+      , hidden(
+        dateRangeInput("Dates", start = strftime(Sys.Date(), "%Y-%m-%d"), end= strftime(Sys.Date(), "%Y-%m-%d"), label = h3(""), max = strftime(Sys.Date(), "%Y-%m-%d"))
+      )
+      , hidden(
+          radioButtons(
+          "MeasurementOptions",
+          label = h3("Settings"),
+          choices = list(
+            "lbs" = 1,
+            "kg" = 2
         ),
-        selected = 3
-      ),
-      dateRangeInput("Dates", start = strftime(Sys.Date(), "%Y-%m-%d"), end= strftime(Sys.Date(), "%Y-%m-%d"), label = h3(""), max = strftime(Sys.Date(), "%Y-%m-%d")),
-      radioButtons(
-        "MeasurementOptions",
-        label = h3("Settings"),
-        choices = list(
-          "lbs" = 1,
-          "kg" = 2
-        ),
-        selected = 1
-      ),
-      verbatimTextOutput('v1'), 
-      verbatimTextOutput('v2')
+          selected = 1)
+        )
+      )
+#     , verbatimTextOutput('v1') 
+#     , verbatimTextOutput('v2')
     )
   , column(8,
 #    Tabset Panel wit,h graphs specific to the device in use
 #    mainPanel(htmlOutput("Main"),
-              h2(textOutput("patientBanner")),
+#              h2(textOutput("patientBanner")),
               tabsetPanel(
                 #              tabPanel("Omron:Omron Heartvue", plotOutput("TSOMRON_OMRON_HEARTVUE")),
                 #              tabPanel("FitBit:FitBit Wearable", plotOutput("TSFITBIT_FITBIT"))
@@ -98,6 +103,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   URLString <- parseQueryString(isolate(session$clientData$url_search))
+  topBar <- ""
   if (length(URLString)>0) {
     qID <- ""
     defaultSDate <- strftime(Sys.Date() - 31, "%Y-%m-%d")
@@ -164,8 +170,8 @@ server <- function(input, output, session) {
             appendTab(inputId = "TS",
                       tabPanel(title = row,  plotOutput(paste("TS", c, sep="")),
                                textInput(paste("TI", c, sep=""), "Comments", "", width = "100%"),
-                               htmlOutput(paste("GL", c, sep="")), 
-                               htmlOutput(paste("JL", c, sep="")),
+#                              htmlOutput(paste("GL", c, sep="")), 
+#                              htmlOutput(paste("JL", c, sep="")),
                                actionButton(paste("AB", c, sep=""), paste("Save ", c, " to EHR",sep="")),
                                htmlOutput(paste("DR", c, sep="")),
                                value = paste("TS", c, sep="")))
@@ -173,8 +179,8 @@ server <- function(input, output, session) {
           } else {   # No Action Button
             appendTab(inputId = "TS",
                       tabPanel(title = row,  plotOutput(paste("TS", c, sep="")),
-                               htmlOutput(paste("GL", c, sep="")), 
-                               htmlOutput(paste("JL", c, sep="")),
+#                              htmlOutput(paste("GL", c, sep="")), 
+#                              htmlOutput(paste("JL", c, sep="")),
                                value = paste("TS", c, sep="")))
             
           }
@@ -190,6 +196,9 @@ server <- function(input, output, session) {
         )
       }
     }
+    toggle("DateRangeOptions")
+    toggle("Dates")
+    toggle("MeasurementOptions")
   }
   # Show a plot of the device in question
   #output$topRow <- renderImage({
@@ -211,29 +220,29 @@ server <- function(input, output, session) {
   
   output$TS_HistoryTable <- DT::renderDataTable(dr, server = FALSE, selection = 'single')
   
-  output$TS_HistoryTable_Selected <- renderPrint({x <- input$TS_HistoryTable_rows_selected
-  if(!is.null(x)){
-    getBinary(patientID, dr[1, "url"], accessToken)
+#  output$TS_HistoryTable_Selected <- renderPrint({x <- input$TS_HistoryTable_rows_selected
+#  if(!is.null(x)){
+#    getBinary(patientID, dr[1, "url"], accessToken)
 #    put_object(file = paste("Data/DR", patientID, ".pdf", sep="")
 #               , object = paste("DR", patientID, ".pdf", sep="")
 #               , bucket = "ellumenwearablesconnectdata"
 #               , acl = "public-read"
-               #, folder = "Data"
-    #               , region = "us-east-2"
-    #           , key = config$AWS_S3$key
-    #           , secret = config$AWS_S3$secret
-    #) 
-    y <- paste("window.open("
-          , "'https://s3.us-east-2.amazonaws.com/ellumenwearablesconnectdata/"
-          , paste("DR", patientID, ".pdf", sep="")
-          , "'"
-          , ",'MsgWindow'"
-          , ",'width=800,height=400')", sep="")
-    print(y)
-    #runjs(y)
-  }
-  paste(x, patientID, config$AWS_S3$key,config$AWS_S3$secret, sep=" ")
-  })
+#               , folder = "Data"
+#               , region = "us-east-2"
+#               , key = config$AWS_S3$key
+#               , secret = config$AWS_S3$secret
+#   ) 
+#   y <- paste("window.open("
+#          , "'https://s3.us-east-2.amazonaws.com/ellumenwearablesconnectdata/"
+#          , paste("DR", patientID, ".pdf", sep="")
+#          , "'"
+#          , ",'MsgWindow'"
+#          , ",'width=800,height=400')", sep="")
+#   print(y)
+#   #runjs(y)
+#  }
+#  paste(x, patientID, config$AWS_S3$key,config$AWS_S3$secret, sep=" ")
+#  })
   
   output$TSOMRON_OMRON_HEARTVUE <- renderPlot({
     enable("ABOMRON_OMRON_HEARTVUE")
@@ -277,8 +286,8 @@ server <- function(input, output, session) {
                                                      ,qID
                                                      ,"OMRON"
                                                      ,"OMRON HeartVue")
-    output$JLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
-    output$GLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
+#   output$JLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
+#   output$GLOMRON_OMRON_HEARTVUE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
     plot_grid(P1, P2, align = "v", nrow = 2, rel_heights = c(40, 20))
   }
   )
@@ -334,8 +343,8 @@ server <- function(input, output, session) {
                                                      ,qID
                                                      ,"NOKIA"
                                                      ,"NOKIA Scale")
-    output$JLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
-    output$GLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
+#    output$JLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
+#    output$GLNOKIA_NOKIA_SCALE <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
     plot_grid(P1, P3, P2, align = "v", nrow = 3, rel_heights = c(40, 20, 20))
   }
   )
@@ -381,8 +390,8 @@ server <- function(input, output, session) {
                                                      ,qID
                                                      ,"FITBIT"
                                                      ,"FITBIT Watch")
-    output$JLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
-    output$GLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
+#    output$JLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = JSONLink, target = "_blank", "FHIR File"))
+#    output$GLFITBIT_FITBIT_WATCH <- renderUI(tags$a(href = GraphicLink, target = "_blank", "Graphic File"))
     plot_grid(P1, P2, align = "v", nrow = 2, rel_heights = c(40, 20))
   }
   )
